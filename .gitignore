@@ -1,3 +1,5 @@
+.DS_Store
+**/.DS_Store
 **/*.gff
 data/raw_data/1, Antigen_Clostridium_nexilis.dna
 data/raw_data/1, Antigen_Clostridium_nexilis.gb
