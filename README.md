@@ -82,3 +82,7 @@ Use this tabular file to draw the figure.
 ```bash
 python gene_neighborhood_viz.py --seed pub/genomes_list.tsv --prefix pub/genomes_list
 ```
+
+## Contact
+
+[Sunit Jain](www.sunitjain.com/contact)
