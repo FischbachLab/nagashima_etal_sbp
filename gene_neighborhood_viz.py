@@ -14,7 +14,7 @@ import logging
 import os
 import re
 import urllib.parse
-import random
+import numpy as np
 
 from Bio.Graphics import GenomeDiagram
 from Bio.SeqFeature import FeatureLocation, SeqFeature
@@ -30,24 +30,31 @@ def usage():
     return parser.parse_args().__dict__
 
 
-#### from FlaGs ####
-# Color generator
-def random_color(c=None):
-    """Generates a random color in RGB format."""
-    if not c:
-        c = random.random()
-    d = 0.5
-    e = 0.5
-    return _hls2hex(c, d, e)
+def random_colors(num_colors):
+    """Generate N distinct colors.
+    Source: https://stackoverflow.com/a/9701141/7609803
 
+    Args:
+        num_colors (int): number of colors
 
-def _hls2hex(c, d, e):
-    return "#%02x%02x%02x" % tuple(
-        map(lambda f: int(f * 255), colorsys.hls_to_rgb(c, d, e))
-    )
-
-
-#### from FlaGs ####
+    Returns:
+        list: list of 'num_color' color hex values
+    """
+    colors = []
+    for i in np.arange(0, 360, 360 / num_colors):
+        hue = i / 360
+        lightness = (50 + np.random.rand() * 10) / 100
+        saturation = (90 + np.random.rand() * 10) / 100
+        # rgb_colors.append(colorsys.hls_to_rgb(hue, lightness, saturation))
+        colors.append(
+            "".join(
+                [
+                    "%0.2X" % int(c * 255)
+                    for c in colorsys.hls_to_rgb(hue, lightness, saturation)
+                ]
+            )
+        )
+    return [f"#{hex}" for hex in colors]
 
 
 def define_genome_track(d, track_name, track_num):
@@ -281,14 +288,14 @@ def main():
 
     gff_list = args["seed"]
     prefix = args["prefix"]
-    window_size = 20000
-    cluster_size = 3
+    window_size = args["window_size"]  # 20000
+    cluster_size = args["cluster_size"]  # 3
 
     diagram = GenomeDiagram.Diagram(f"{prefix}")
     num_genomes = 0
-    # TODO @sunitj: make the random color generator generate cluster_size 'distinct' colors
-    # color_list = [random_color() for i in range(cluster_size)]
-    color_list = ["#bf3f53", "#3f85bf", "#bdbf3f"]  # red, blue, pale green
+    # the random color generator generate cluster_size 'distinct' colors
+    color_list = random_colors(cluster_size)
+    # color_list = ["#bf3f53", "#3f85bf", "#bdbf3f"]  # red, blue, pale green
     gene_names_list = ["T-Cell antigen, SBP", "Gene B", "Gene C"]
     logging.info(f"Color pallette: {color_list}")
     with open(gff_list, "r") as gff_h:
@@ -327,6 +334,7 @@ def main():
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.DEBUG, format="%(asctime)s\t[%(levelname)s]:\t%(message)s",
+        level=logging.DEBUG,
+        format="%(asctime)s\t[%(levelname)s]:\t%(message)s",
     )
     main()
