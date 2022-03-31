@@ -26,6 +26,15 @@ def usage():
 
     parser.add_argument("--seed", help="list of gff files with locus of interest")
     parser.add_argument("--prefix", help="specify the output prefix")
+    parser.add_argument(
+        "--window_size",
+        help="Size in nucleotides to display",
+        default=20000,
+        required=False,
+    )
+    parser.add_argument(
+        "--operon_size", help="number of genes in the operon", default=3, required=False
+    )
 
     return parser.parse_args().__dict__
 
@@ -134,7 +143,7 @@ def get_features_of_interest(
     color_list,
     gene_names_list,
     window_size=None,
-    cluster_size=None,
+    operon_size=None,
 ):
     # returns a list of dictionaries
     # [{
@@ -144,7 +153,7 @@ def get_features_of_interest(
     #     strand : +1/-1,
     # }]
     list_of_records = list()
-    genes_in_cluster = cluster_size
+    genes_in_cluster = operon_size
 
     # First pass through the gff to identify the location of the gene of interest
     # and determine the window start and end coordinates
@@ -164,13 +173,13 @@ def get_features_of_interest(
             positions.append(feature["start"])
             positions.append(feature["end"])
             contig_w_gene_of_interest = feature["contig"]
-            cluster_size = cluster_size - 1
-            while cluster_size > 0:
+            operon_size = operon_size - 1
+            while operon_size > 0:
                 # If the selected gene is on a negative strand,
                 # add the previous genes to the selected operon set.
                 # else continue on to the next one.
                 if operon_strand == "-":
-                    name, start, end = past_features[(f - cluster_size)]
+                    name, start, end = past_features[(f - operon_size)]
                 elif operon_strand == "+":
                     try:
                         feature = next(features)
@@ -179,13 +188,13 @@ def get_features_of_interest(
                         end = feature["end"]
 
                     except StopIteration as s:
-                        logging.error(f"{feature['name']} \t {cluster_size}")
+                        logging.error(f"{feature['name']} \t {operon_size}")
                         raise s
 
                 feature_locii.add(name)
                 positions.append(start)
                 positions.append(end)
-                cluster_size = cluster_size - 1
+                operon_size = operon_size - 1
 
         if len(feature_locii) == genes_in_cluster:
             break
@@ -289,30 +298,35 @@ def main():
     gff_list = args["seed"]
     prefix = args["prefix"]
     window_size = args["window_size"]  # 20000
-    cluster_size = args["cluster_size"]  # 3
+    operon_size = args["operon_size"]  # 3
 
     diagram = GenomeDiagram.Diagram(f"{prefix}")
     num_genomes = 0
-    # the random color generator generate cluster_size 'distinct' colors
-    color_list = random_colors(cluster_size)
+    # the random color generator generate operon_size 'distinct' colors
+    color_list = random_colors(operon_size)
     # color_list = ["#bf3f53", "#3f85bf", "#bdbf3f"]  # red, blue, pale green
-    gene_names_list = ["T-Cell antigen, SBP", "Gene B", "Gene C"]
+    gene_names_list = ["T-Cell antigen, SBP", "", ""]
     logging.info(f"Color pallette: {color_list}")
     with open(gff_list, "r") as gff_h:
         for idx, line in enumerate(gff_h):
             if line[0] == "#":
                 continue
+
             gff, locus = line.strip().split("\t")
             logging.info(f"Creating new track for {gff}")
-            track_name = os.path.basename(gff)
+            track_name = os.path.basename(gff).replace("_protein.gff", "")
+            # track_gene_names = list()
+            track_gene_names = gene_names_list.copy()
+            track_gene_names[0] = f"{track_name} {gene_names_list[0]}"
+
             track = define_genome_track(diagram, track_name, idx)
             track_metadata, feature_dict_list = get_features_of_interest(
                 gff,
                 locus,
                 color_list,
-                gene_names_list,
+                track_gene_names,
                 window_size=window_size,
-                cluster_size=cluster_size,
+                operon_size=operon_size,
             )
 
             logging.info(f"\tAdding {len(feature_dict_list)} features.")
