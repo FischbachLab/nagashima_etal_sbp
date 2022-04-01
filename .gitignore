@@ -1,9 +1,4 @@
 .DS_Store
 **/.DS_Store
 **/*.gff
-data/raw_data/1, Antigen_Clostridium_nexilis.dna
-data/raw_data/1, Antigen_Clostridium_nexilis.gb
-data/raw_data/2, Firmicutes antigen alignment_Whole.svg
-data/raw_data/3, 20strains of Clostridia.xlsx
-data/raw_data/all_20_genomes.hCom1.list
-data/raw_data/possible_sequence.fasta
+**/data/
