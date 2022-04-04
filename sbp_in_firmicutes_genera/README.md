@@ -50,17 +50,20 @@ This script will download the `gff.gz` file from the `FTP_download` column in th
 
 ## Extract genes from the contigs using the corresponding GFF files
 
-Use bedtools
-
-something like (not sure I need the `-s`, since blast should work regardless.)
+Use the `run_bedtools_getfasta.sh` script to extract the genes from the genomes.
 
 ```bash
-bedtools getfasta -fi contigs.fna -bed contigs.gff -s -fullHeader
+ls fna/*.gz | \
+    parallel \
+        -j 4 \
+        --joblog run_bedtools_getfasta.joblog \
+        --plus \
+        "bash run_bedtools_getfasta.sh {} gff/{/..}.gff.gz" &> run_bedtools_getfasta.log
 ```
 
-## Create a blastDB with the 3 genes in the operon
+## Create a blastDB with the SBP gene
 
-## BlastX with operon DB against all the genes files
+## BlastN with SBP DB against all the genes files
 
 ## For each genera calculate how many genomes had hits to the entire operon
 
