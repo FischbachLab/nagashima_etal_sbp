@@ -1,0 +1,153 @@
+---
+title: "Decorate Tree"
+author: "Sunit"
+date: "4/6/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggtree)
+```
+
+
+```{r}
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("ggtree")
+```
+```{r}
+workdir = "/Users/sunit.jain/GitHub/FischbachLab/nagashima_etal_sbp/sbp_in_firmicutes_genera/data"
+tree_file = paste0(workdir, "/","firmicutes_genera.pruned.tree")
+tree_metadata = paste0(workdir, "/","selected_firmicutes_genera.formatted_names.tsv")
+genomes_per_genus = paste0(workdir, "/","genomes_per_genus.csv")
+operons_per_genus = paste0(workdir, "/","agg_occurrance_by_genera.csv")
+```
+
+```{r}
+t = read.tree(tree_file)
+plot(t)
+```
+```{r}
+tree_metadata_df  = read_table(tree_metadata) %>% 
+  rename("category"=genus)
+tree_metadata_df
+```
+```{r}
+gpg = read_csv(genomes_per_genus)
+class(gpg)
+```
+```{r}
+opg = read_csv(operons_per_genus) %>% select(-total_genomes)
+opg
+```
+```{r}
+agg_metadata_df = gpg %>% 
+  left_join(opg, by = "category") %>% 
+  left_join(tree_metadata_df, by ="category") %>% 
+  rowwise() %>% 
+  mutate(perc_occ = 100 * (genomes_w_complete_operon/total_genomes)) %>% 
+  ungroup() %>% 
+  replace_na(list(perc_occ=0)) %>% 
+  mutate(black_bar = 100 - perc_occ,
+         presence = if_else(is.na(genomes_w_complete_operon),"absent","present")) %>% 
+  select(category, everything())
+  # write_csv("/Users/sunit.jain/GitHub/FischbachLab/nagashima_etal_sbp/sbp_in_firmicutes_genera/data/maf_geneomes_per_genus.csv")
+agg_metadata_df
+```
+
+```{r}
+full_tree = full_join(t, agg_metadata_df, by=c("label"="user_genome"))
+```
+
+```{r}
+full_tree@data
+```
+
+
+```{r}
+# full_tree_copy = full_tree
+p = ggtree(full_tree, )+ # branch.length = "none"
+  geom_tiplab(aes(color=presence, label = category), size=2,  offset = 0.2,linetype = "solid", align=TRUE, linesize = 0.2)+ #
+  scale_color_manual(values=c("black","red"))+
+  # coord_cartesian(clip = 'off') + 
+  # theme_tree2(plot.margin=margin(6, 120, 6, 6), legend.position='none')
+  hexpand(0.2)
+
+p
+```
+```{r}
+p1 = ggtree(full_tree, branch.length = "none")+ # 
+  geom_tiplab(aes(color=presence, label = category), size=2,  offset = 0.2,)+ #linetype = "solid", align=TRUE, linesize = 0.2
+  scale_color_manual(values=c("black","red"))+
+  # coord_cartesian(clip = 'off') + 
+  # theme_tree2(plot.margin=margin(6, 120, 6, 6), legend.position='none')
+  hexpand(0.2)
+p1
+```
+
+```{r}
+a <- runif(30, 0,1)
+b <- 1 - a
+df <- data.frame(t$tip.label, a, b)
+df <- reshape2::melt(df, id = "t.tip.label")
+df
+```
+
+
+```{r}
+t_m = agg_metadata_df %>% 
+  select(user_genome, perc_occ) %>% 
+  mutate(not_perc_occ = 100 - perc_occ) %>% 
+  pivot_longer(cols = c(perc_occ, not_perc_occ), names_to = "variable",values_to = "value") %>% 
+  rename("t.tip.label"=user_genome)
+t_m
+```
+
+```{r}
+height = 3
+width = 4
+scale = 2
+scaled_height = height * scale
+scaled_width = width * scale
+```
+
+
+```{r}
+p2 = p+geom_facet(panel = "Operons", 
+                  data = t_m, 
+                  geom = geom_bar, 
+                  mapping = aes(x = value, fill = variable),
+                  orientation = 'y', 
+                  width = 0.6, 
+                  stat='identity'
+                  ) + 
+  scale_fill_manual(values=c("black","red"))+
+  theme(legend.position='none')
+
+facet_widths(p2,widths = c(Operons=0.1))
+ggsave("/Users/sunit.jain/GitHub/FischbachLab/nagashima_etal_sbp/sbp_in_firmicutes_genera/data/publication_tree.branch_length_aligned.pdf",
+       dpi=300,
+       device = "pdf",width = scaled_width, height = scaled_height,units = "in")
+```
+
+```{r}
+p3 = p1+geom_facet(panel = "Operons", 
+                  data = t_m, 
+                  geom = geom_bar, 
+                  mapping = aes(x = value, fill = variable),
+                  orientation = 'y', 
+                  width = 0.6, 
+                  stat='identity'
+                  ) + 
+  scale_fill_manual(values=c("black","red"))+
+  theme(legend.position='none')
+
+facet_widths(p3,widths = c(Operons=0.1))
+ggsave("/Users/sunit.jain/GitHub/FischbachLab/nagashima_etal_sbp/sbp_in_firmicutes_genera/data/publication_tree.branch_none.pdf",
+       dpi=300,
+       device = "pdf",width = scaled_width, height = scaled_height,units = "in")
+```
+
