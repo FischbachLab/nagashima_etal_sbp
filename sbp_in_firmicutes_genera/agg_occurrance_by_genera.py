@@ -15,7 +15,7 @@ import numpy as np
 
 
 def usage():
-    parser = argparse.ArgumentParser(description="Download from UHGG")
+    parser = argparse.ArgumentParser(description="Aggregate blast results")
 
     parser.add_argument("-b", "--blastdir", help="directory with blast outputs")
     parser.add_argument("-o", "--output", help="final output file")
