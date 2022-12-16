@@ -19,7 +19,7 @@ min_y = 1e-6
 ## Undefined FMT 
 
 ```{r read_undefined_fmt_midas}
-undf_fmt_df = read_excel("ForKazuki/1_UndefinedHuman_20200722_FMT1_MIDAS.xlsx") 
+undf_fmt_df = read_excel("data/fromPoYi/1_UndefinedHuman_20200722_FMT1_MIDAS.xlsx") 
 undf_fmt_df["norm_rel_ab"] = undf_fmt_df["count_reads"] / sum(undf_fmt_df["count_reads"])
 
 not_samples = c('Cecum','PT31')
@@ -80,7 +80,7 @@ undf_fmt_set3
 ## Mouse Backfill v1
 
 ```{r}
-mbfv1_df = read_csv("ForKazuki/mbfv1_dataframe_minRelAbund_0.csv", show_col_types = FALSE)
+mbfv1_df = read_csv("data/fromPoYi/mbfv1_dataframe_minRelAbund_0.csv", show_col_types = FALSE)
 mbfv1_df["norm_rel_ab"] = mbfv1_df["relative_abundance"] / sum(mbfv1_df["relative_abundance"])
 
 not_samples = c('Com','GF','OB','Pat','MC','MDC')
@@ -123,7 +123,7 @@ pat1_mbfv1_df
 ## Mouse Backfill v2
 
 ```{r}
-mbfv2_df = read_csv("ForKazuki/8_backfill2_mbfv2_dataframe_minRelAbund_0_Sunit_backfill2_MIDAS.csv", show_col_types = FALSE)
+mbfv2_df = read_csv("data/fromPoYi/8_backfill2_mbfv2_dataframe_minRelAbund_0_Sunit_backfill2_MIDAS.csv", show_col_types = FALSE)
 mbfv2_df["norm_rel_ab"] = mbfv2_df["count_reads"] / sum(mbfv2_df["count_reads"])
 
 not_samples = c('Cecum','Small')
@@ -171,7 +171,7 @@ range(pat1_mbfv2_df["mean_rel_ab"])
 ## Kazuki's Community
 
 ```{r read_kazuki_data}
-kazuki_df = read_excel("221111conventional mouse.xlsx")[1:5]
+kazuki_df = read_excel("data/fromKazuki/221111conventional_mouse.xlsx")[1:5]
 kazuki_df["norm_rel_ab"] = 0.01 * kazuki_df["count_reads"] / sum(kazuki_df["count_reads"])
 
 not_samples = c('Cecum','Small')
@@ -206,7 +206,7 @@ unique_species_ids = df %>%
 ## Adjust MIDAS Taxonomy
 
 ```{r}
-midas1_taxonomy_df = read_csv("ForKazuki/midas_genome_taxonomy.csv", show_col_types = FALSE) %>% 
+midas1_taxonomy_df = read_csv("data/fromPoYi/midas_genome_taxonomy.csv", show_col_types = FALSE) %>% 
   mutate(adj_phylum = if_else(str_equal(phylum, "delta/epsilon subdivisions"),"Proteobacteria",phylum)) %>% 
   select(species_id, adj_phylum) %>% 
   rename(phylum="adj_phylum")
@@ -219,6 +219,8 @@ midas1_taxonomy_df$phylum[41] = 'Bacteroidetes'
 
 midas1_taxonomy_df %<>%
   distinct() %>% 
+  # no point in keeping the entire data frame
+  # just keep the ones we'll use
   filter(species_id %in% unique_species_ids$species_id) %>% 
   drop_na(phylum)
 
@@ -226,6 +228,9 @@ midas1_taxonomy_df %<>%
   # this bin has both Actinobacteria and Proteobacteria assignments
   # NCBI says this is Actinobacteria, so removed Proteobacteria
   filter(! (species_id == "Micrococcus_luteus_57785" & phylum == "Proteobacteria")) %>% 
+  # manually checked that the bins with NA as phylum assignments
+  # were duplicates and had other rows which had phylum assignments
+  # removed the ones with NA in phylum
   drop_na(phylum)
 
 midas1_taxonomy_df
@@ -241,6 +246,7 @@ table(midas1_taxonomy_df["phylum"])
 ### Colors
 
 ```{r set_family_color}
+# translating PoYi's RGB colors to hex
 taxa_colors = tibble(
   "phylum" = c('Actinobacteria','Bacteroidetes','Firmicutes','Proteobacteria','Verrucomicrobia','Other'),
   "hex" = c("#3953A5","#0D7D3F","#EE2025","#7030A0","#F68620","#C8C8C8"),
@@ -252,20 +258,19 @@ taxa_colors
 ```
 
 ```{r}
-taxa_colors_list <- c(
-  Actinobacteria = "#3953A5",
-  Bacteroidetes = "#0D7D3F",
-  Firmicutes = "#EE2025",
-  Proteobacteria = "#7030A0",
-  Verrucomicrobia = "#F68620",
-  Other = "#C8C8C8"
-  )
+taxa_colors_list = deframe(taxa_colors[, 1:2])
 ```
 
 
 ```{r}
-taxa_df = left_join(midas1_taxonomy_df, taxa_colors, by = "phylum")
-taxa_df 
+# taxa_colors_list = c(
+#   Actinobacteria = "#3953A5",
+#   Bacteroidetes = "#0D7D3F",
+#   Firmicutes = "#EE2025",
+#   Proteobacteria = "#7030A0",
+#   Verrucomicrobia = "#F68620",
+#   Other = "#C8C8C8"
+#   )
 ```
 
 ```{r}
@@ -298,10 +303,10 @@ p
 
 
 ```{r}
-ggsave(filename = "kazuki_hCom_compare.eps",plot = p, dpi = 300, height = 9, width = 16, units = "cm")
+ggsave(filename = "outputs/figures/kazuki_hCom_compare.eps",plot = p, dpi = 300, height = 9, width = 16, units = "cm")
 ```
 
 ```{r}
-ggsave(filename = "kazuki_hCom_compare.png",plot = p, dpi = 300, height = 9, width = 16, units = "cm")
+ggsave(filename = "outputs/figures/kazuki_hCom_compare.png",plot = p, dpi = 300, height = 9, width = 16, units = "cm")
 ```
 
