@@ -1,5 +1,5 @@
 ---
-title: "kazuki_fig5g"
+title: "hCom comparison"
 output: html_document
 date: "2022-12-15"
 ---
@@ -259,18 +259,6 @@ taxa_colors
 
 ```{r}
 taxa_colors_list = deframe(taxa_colors[, 1:2])
-```
-
-
-```{r}
-# taxa_colors_list = c(
-#   Actinobacteria = "#3953A5",
-#   Bacteroidetes = "#0D7D3F",
-#   Firmicutes = "#EE2025",
-#   Proteobacteria = "#7030A0",
-#   Verrucomicrobia = "#F68620",
-#   Other = "#C8C8C8"
-#   )
 ```
 
 ```{r}
