@@ -1,0 +1,307 @@
+---
+title: "kazuki_fig5g"
+output: html_document
+date: "2022-12-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(readxl)
+library(mdthemes)
+library(ggplot2)
+library(scales)
+library(ggbeeswarm)
+min_y = 1e-6
+```
+
+## Undefined FMT 
+
+```{r read_undefined_fmt_midas}
+undf_fmt_df = read_excel("ForKazuki/1_UndefinedHuman_20200722_FMT1_MIDAS.xlsx") 
+undf_fmt_df["norm_rel_ab"] = undf_fmt_df["count_reads"] / sum(undf_fmt_df["count_reads"])
+
+not_samples = c('Cecum','PT31')
+
+undf_fmt_df %<>% 
+  filter(grepl(x = sample_id, pattern = "^FMT1-W")) %>% 
+  filter(! grepl(pattern = str_c(not_samples,collapse = "|"), x = sample_id)) %>%
+  rowwise() %>% 
+  mutate(
+    mouse = as.integer(str_replace(str_split_1(sample_id, "-")[3], "mouse","")),
+    week = as.integer(str_replace(str_split_1(sample_id, "-")[2], "W",""))
+  ) %>% 
+  ungroup()
+
+undf_fmt_df
+```
+
+```{r}
+table(undf_fmt_df["week"])
+table(undf_fmt_df["mouse"])
+```
+
+```{r}
+range(undf_fmt_df["norm_rel_ab"])
+```
+### Separate into the Hum1, 2 and 3 data and average by species
+
+```{r}
+undf_fmt_set1 = undf_fmt_df %>% 
+  filter(week == 4, mouse %in% c(5,6,7,8)) %>% 
+  group_by(species_id) %>% 
+  summarize(mean_rel_ab = mean(norm_rel_ab, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(source = "Hum1")
+undf_fmt_set1
+```
+
+```{r}
+undf_fmt_set2 = undf_fmt_df %>% 
+  filter(week == 4, mouse %in% c(9,10,11,12)) %>% 
+  group_by(species_id) %>% 
+  summarize(mean_rel_ab = mean(norm_rel_ab, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(source = "Hum2")
+undf_fmt_set2
+```
+
+```{r}
+undf_fmt_set3 = undf_fmt_df %>% 
+  filter(week == 4, mouse %in% c(13,14,15,16)) %>% 
+  group_by(species_id) %>% 
+  summarize(mean_rel_ab = mean(norm_rel_ab, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(source = "Hum3")
+undf_fmt_set3
+```
+
+## Mouse Backfill v1
+
+```{r}
+mbfv1_df = read_csv("ForKazuki/mbfv1_dataframe_minRelAbund_0.csv", show_col_types = FALSE)
+mbfv1_df["norm_rel_ab"] = mbfv1_df["relative_abundance"] / sum(mbfv1_df["relative_abundance"])
+
+not_samples = c('Com','GF','OB','Pat','MC','MDC')
+
+mbfv1_df %<>%
+  filter(! grepl(pattern = str_c(not_samples,collapse = "|"), x = sample_id)) %>%
+  rowwise() %>%
+  mutate(
+    mouse = as.integer(MouseNum),
+    week = as.integer(str_replace(Week, "W",""))
+  ) %>%
+  ungroup()
+
+mbfv1_df
+```
+
+```{r}
+table(mbfv1_df["week"])
+table(mbfv1_df["mouse"])
+```
+
+```{r}
+range(mbfv1_df["norm_rel_ab"])
+```
+
+### Extract Patient 1 data and average across species
+
+```{r}
+pat1_mbfv1_df = mbfv1_df %>% 
+  filter(Challenge == "Patient_1", week == 4) %>% 
+  filter(! mouse == 6) %>% # Why? not sure...
+  group_by(name) %>% 
+  summarize(mean_rel_ab = mean(norm_rel_ab, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(source = "hCom1") %>% # Patient_1 only
+  rename(species_id = "name")
+pat1_mbfv1_df
+```
+
+## Mouse Backfill v2
+
+```{r}
+mbfv2_df = read_csv("ForKazuki/8_backfill2_mbfv2_dataframe_minRelAbund_0_Sunit_backfill2_MIDAS.csv", show_col_types = FALSE)
+mbfv2_df["norm_rel_ab"] = mbfv2_df["count_reads"] / sum(mbfv2_df["count_reads"])
+
+not_samples = c('Cecum','Small')
+
+mbfv2_df %<>%
+  filter(grepl(pattern = "SCV2", x=sample_id)) %>% 
+  filter(! grepl(pattern = str_c(not_samples,collapse = "|"), x = sample_id)) %>%
+  rowwise() %>%
+  mutate(
+    mouse = as.integer(MouseNum),
+    week = as.integer(str_replace(Week, "Week",""))
+  ) %>%
+  ungroup()
+
+mbfv2_df
+```
+
+```{r}
+table(mbfv2_df["week"])
+table(mbfv2_df["mouse"])
+```
+
+```{r}
+range(mbfv2_df["norm_rel_ab"])
+```
+
+### Extract Patient 1 data and average across species
+
+```{r}
+pat1_mbfv2_df = mbfv2_df %>% 
+  filter(Challenge == "Patient_1", week == 4) %>% 
+  group_by(name) %>% 
+  summarize(mean_rel_ab = mean(norm_rel_ab, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(source = "hCom2") %>% # Patient_1  only
+  rename(species_id = "name")
+pat1_mbfv2_df
+```
+
+```{r}
+range(pat1_mbfv2_df["mean_rel_ab"])
+```
+
+
+## Kazuki's Community
+
+```{r read_kazuki_data}
+kazuki_df = read_excel("221111conventional mouse.xlsx")[1:5]
+kazuki_df["norm_rel_ab"] = 0.01 * kazuki_df["count_reads"] / sum(kazuki_df["count_reads"])
+
+not_samples = c('Cecum','Small')
+
+kazuki_df %<>%
+  filter(! grepl(pattern = str_c(not_samples,collapse = "|"), x = sample_id)) %>%
+  group_by(species_id) %>% 
+  summarize(mean_rel_ab = mean(norm_rel_ab, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(source = "kCom")
+
+kazuki_df
+```
+
+```{r}
+range(kazuki_df["mean_rel_ab"])
+```
+## Combined Dataframe
+
+```{r}
+df = bind_rows(pat1_mbfv1_df,pat1_mbfv2_df,kazuki_df, undf_fmt_set1, undf_fmt_set2, undf_fmt_set3)
+df
+```
+```{r}
+unique_species_ids = df %>% 
+  select(species_id) %>% 
+  distinct() %>% 
+  as.list()
+```
+
+
+## Adjust MIDAS Taxonomy
+
+```{r}
+midas1_taxonomy_df = read_csv("ForKazuki/midas_genome_taxonomy.csv", show_col_types = FALSE) %>% 
+  mutate(adj_phylum = if_else(str_equal(phylum, "delta/epsilon subdivisions"),"Proteobacteria",phylum)) %>% 
+  select(species_id, adj_phylum) %>% 
+  rename(phylum="adj_phylum")
+
+# based on Po-Yi's code, reason unknown
+# also not sure if I've updated the correct one.
+# keeping this in hopes that it'll be easy to fix later
+midas1_taxonomy_df$phylum[41] = 'Bacteroidetes'
+  
+
+midas1_taxonomy_df %<>%
+  distinct() %>% 
+  filter(species_id %in% unique_species_ids$species_id) %>% 
+  drop_na(phylum)
+
+midas1_taxonomy_df %<>%
+  # this bin has both Actinobacteria and Proteobacteria assignments
+  # NCBI says this is Actinobacteria, so removed Proteobacteria
+  filter(! (species_id == "Micrococcus_luteus_57785" & phylum == "Proteobacteria")) %>% 
+  drop_na(phylum)
+
+midas1_taxonomy_df
+```
+
+
+```{r}
+table(midas1_taxonomy_df["phylum"])
+```
+
+## Plots
+
+### Colors
+
+```{r set_family_color}
+taxa_colors = tibble(
+  "phylum" = c('Actinobacteria','Bacteroidetes','Firmicutes','Proteobacteria','Verrucomicrobia','Other'),
+  "hex" = c("#3953A5","#0D7D3F","#EE2025","#7030A0","#F68620","#C8C8C8"),
+  "r" = c(57,13,238,112,246,200),
+  "g" = c(83,125,32,48,134,200),
+  "b" = c(165,63,37,160,32,200),
+)
+taxa_colors
+```
+
+```{r}
+taxa_colors_list <- c(
+  Actinobacteria = "#3953A5",
+  Bacteroidetes = "#0D7D3F",
+  Firmicutes = "#EE2025",
+  Proteobacteria = "#7030A0",
+  Verrucomicrobia = "#F68620",
+  Other = "#C8C8C8"
+  )
+```
+
+
+```{r}
+taxa_df = left_join(midas1_taxonomy_df, taxa_colors, by = "phylum")
+taxa_df 
+```
+
+```{r}
+plot_df = df %>% 
+  left_join(midas1_taxonomy_df, by="species_id") %>% 
+  mutate(
+    phylum = if_else(phylum %in% taxa_colors$phylum, phylum, "Other"),
+    plot_rel_ab = mean_rel_ab * 100,
+    plot_rel_ab = if_else(plot_rel_ab < min_y, min_y, plot_rel_ab),
+  )
+
+table(plot_df$phylum)
+```
+
+
+```{r}
+p = plot_df %>% 
+  ggplot(aes(source, plot_rel_ab))+
+  geom_quasirandom(aes(fill = phylum), color="black", pch = 21, size = 3, stroke=1)+
+  scale_fill_manual(values = taxa_colors_list)+
+  coord_cartesian(ylim = c(min_y, 1))+ 
+  scale_y_log10(breaks = 10^seq(-10,10,2),
+                labels = trans_format("log10", math_format(10^.x)))+
+  xlab("")+
+  ylab("Relative abundance")+
+  md_theme_bw()+
+  theme(text = element_text(size = 10))
+p
+```
+
+
+```{r}
+ggsave(filename = "kazuki_hCom_compare.eps",plot = p, dpi = 300, height = 9, width = 16, units = "cm")
+```
+
+```{r}
+ggsave(filename = "kazuki_hCom_compare.png",plot = p, dpi = 300, height = 9, width = 16, units = "cm")
+```
+
